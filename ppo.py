@@ -60,7 +60,7 @@ class ActorCritic(nn.Module):
         value = self.critic(features).squeeze(-1)
         return dist, value
 
-    def act(self, obs: torch.Tensor):
+    def act(self, obs: torch.Tensor): # obs is the state
         """Sample action, return (action, log_prob, value)."""
         dist, value = self(obs)
         action = dist.sample()
@@ -68,10 +68,11 @@ class ActorCritic(nn.Module):
         return action, log_prob, value
 
     def evaluate(self, obs: torch.Tensor, action: torch.Tensor):
-        """Evaluate stored actions under current policy."""
+        """Evaluate stored actions under current policy. Current policy is 
+        the actor network with the current weights."""
         dist, value = self(obs)
         log_prob = dist.log_prob(action).sum(-1)
-        entropy = dist.entropy().sum(-1)
+        entropy = dist.entropy().sum(-1) # why do we need entropy here?
         return log_prob, value, entropy
 
 
@@ -83,24 +84,24 @@ class RolloutBuffer:
     """Stores one batch of experience collected from the environment."""
 
     def __init__(self, n_steps: int, obs_dim: int, act_dim: int, device: torch.device):
-        self.n_steps = n_steps
+        self.n_steps = n_steps # how many steps of experience to store (per PPO update)
         self.device = device
 
-        self.obs      = torch.zeros(n_steps, obs_dim,  device=device)
-        self.actions  = torch.zeros(n_steps, act_dim,  device=device)
-        self.log_probs= torch.zeros(n_steps,           device=device)
-        self.rewards  = torch.zeros(n_steps,           device=device)
-        self.values   = torch.zeros(n_steps,           device=device)
-        self.dones    = torch.zeros(n_steps,           device=device)
-        self.ptr = 0
+        self.obs = torch.zeros(n_steps, obs_dim,  device=device)  # observations at each step
+        self.actions = torch.zeros(n_steps, act_dim,  device=device)  # actions taken at each step
+        self.log_probs = torch.zeros(n_steps, device=device)  # log π(a|s) under the policy that collected the data
+        self.rewards = torch.zeros(n_steps, device=device)  # environment rewards received after each action
+        self.values = torch.zeros(n_steps, device=device)  # critic's V(s) estimate at each step
+        self.dones = torch.zeros(n_steps, device=device)  # 1.0 if episode ended after this step, else 0.0
+        self.ptr = 0  # index of the next slot to write into
 
     def add(self, obs, action, log_prob, reward, value, done):
-        self.obs[self.ptr]       = obs
-        self.actions[self.ptr]   = action
+        self.obs[self.ptr] = obs
+        self.actions[self.ptr] = action
         self.log_probs[self.ptr] = log_prob
-        self.rewards[self.ptr]   = reward
-        self.values[self.ptr]    = value
-        self.dones[self.ptr]     = done
+        self.rewards[self.ptr] = reward
+        self.values[self.ptr] = value
+        self.dones[self.ptr] = done
         self.ptr += 1
 
     def compute_returns(self, last_value: float, gamma: float, lam: float):
@@ -109,17 +110,19 @@ class RolloutBuffer:
         last_gae = 0.0
         for t in reversed(range(self.n_steps)):
             next_non_terminal = 1.0 - self.dones[t].item()
-            next_value = self.values[t + 1].item() if t + 1 < self.n_steps else last_value
+            next_value = self.values[t + 1].item() if t + 1 < self.n_steps else last_value # values is the critic's estimate of V(s) at each step
             delta = self.rewards[t] + gamma * next_value * next_non_terminal - self.values[t]
             last_gae = delta.item() + gamma * lam * next_non_terminal * last_gae
             advantages[t] = last_gae
-        self.returns = advantages + self.values
-        self.advantages = advantages
+        self.returns = advantages + self.values # shape (n_steps,)  returns = advantages + values
+        self.advantages = advantages # shape (n_steps,)  
 
     def get_minibatches(self, n_minibatches: int):
-        """Yield shuffled minibatches of (obs, actions, log_probs, returns, advantages)."""
+        """Yield shuffled minibatches of (obs, actions, log_probs, returns, advantages).
+        n_steps is divided into n_minibatches. 
+        So the size of each minibatch depends on the number of minibatches we want."""
         indices = torch.randperm(self.n_steps, device=self.device)
-        mb_size = self.n_steps // n_minibatches
+        mb_size = self.n_steps // n_minibatches # size of each minibatch
         # Normalize advantages
         adv = (self.advantages - self.advantages.mean()) / (self.advantages.std() + 1e-8)
         for start in range(0, self.n_steps, mb_size):
@@ -129,7 +132,7 @@ class RolloutBuffer:
                 self.actions[idx],
                 self.log_probs[idx],
                 self.returns[idx],
-                adv[idx],
+                adv[idx], # why do we send back advantages here?  because we need advantages to compute the policy loss in PPO update
             )
 
     def reset(self):
@@ -145,32 +148,32 @@ class PPO:
         self,
         obs_dim: int,
         act_dim: int,
-        lr: float          = 3e-4,
-        gamma: float       = 0.99,
-        lam: float         = 0.95,
-        clip_eps: float    = 0.2,
-        n_steps: int       = 2048,
+        lr: float = 3e-4,
+        gamma: float = 0.99,
+        lam: float = 0.95,
+        clip_eps: float = 0.2,
+        n_steps: int = 2048,
         n_minibatches: int = 32,
-        n_epochs: int      = 10,
-        vf_coef: float     = 0.5,
-        ent_coef: float    = 0.0,
+        n_epochs: int = 10,
+        vf_coef: float = 0.5,
+        ent_coef: float = 0.0,
         max_grad_norm: float = 0.5,
-        device: str        = "cpu",
+        device: str = "cpu",
     ):
-        self.gamma        = gamma
-        self.lam          = lam
-        self.clip_eps     = clip_eps
-        self.n_steps      = n_steps
-        self.n_minibatches= n_minibatches
-        self.n_epochs     = n_epochs
-        self.vf_coef      = vf_coef
-        self.ent_coef     = ent_coef
-        self.max_grad_norm= max_grad_norm
-        self.device       = torch.device(device)
+        self.gamma = gamma
+        self.lam = lam
+        self.clip_eps = clip_eps
+        self.n_steps = n_steps
+        self.n_minibatches = n_minibatches
+        self.n_epochs = n_epochs
+        self.vf_coef = vf_coef
+        self.ent_coef = ent_coef
+        self.max_grad_norm = max_grad_norm
+        self.device = torch.device(device)
 
         self.policy = ActorCritic(obs_dim, act_dim).to(self.device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr, eps=1e-5)
-        self.buffer = RolloutBuffer(n_steps, obs_dim, act_dim, self.device)
+        self.buffer = RolloutBuffer(n_steps, obs_dim, act_dim, self.device) # on policy
 
     @torch.no_grad()
     def collect_rollout(self, env, obs: np.ndarray):
@@ -180,6 +183,9 @@ class PPO:
         ep_reward, ep_length = 0.0, 0
 
         for _ in range(self.n_steps):
+            """loop runs for n_step. No matter how many episodes we go through in this loop, 
+            we only collect n_steps of experience."""
+            # Given the observation, get action using policy
             obs_t = torch.tensor(obs, dtype=torch.float32, device=self.device)
             action, log_prob, value = self.policy.act(obs_t)
 
@@ -187,14 +193,17 @@ class PPO:
             act_np = action.cpu().numpy()
             act_np = np.clip(act_np, env.action_space.low, env.action_space.high)
 
+            # Now act
             next_obs, reward, terminated, truncated, _ = env.step(act_np)
             done = terminated or truncated
 
+            # Record response in buffer
             self.buffer.add(obs_t, action, log_prob, 
                             torch.tensor(reward, device=self.device),
                             value,
                             torch.tensor(float(done), device=self.device))
 
+            # New observation is the obs for the next time step
             obs = next_obs
             ep_reward += reward
             ep_length += 1
@@ -215,11 +224,13 @@ class PPO:
     def update(self):
         """Run PPO epochs over the collected rollout."""
         total_pg_loss = total_vf_loss = total_ent = 0.0
+        # total_pg_loss, total_vf_loss, total_ent are used to accumulate the policy loss, value function loss, and entropy across all updates in this PPO epoch. 
+        # We will divide by n_updates at the end to get the average losses.
         n_updates = 0
 
         for _ in range(self.n_epochs):
             for obs, actions, old_log_probs, returns, advantages in \
-                    self.buffer.get_minibatches(self.n_minibatches):
+                    self.buffer.get_minibatches(self.n_minibatches): # picking each sample
 
                 log_probs, values, entropy = self.policy.evaluate(obs, actions)
 
@@ -273,7 +284,7 @@ class PPO:
                 ep_return += reward
                 done = terminated or truncated
             returns.append(ep_return)
-        return float(np.mean(returns))
+        return float(np.mean(returns)) # calculates the avg return per episode
 
     def save(self, path: str):
         torch.save(self.policy.state_dict(), path)
@@ -288,42 +299,42 @@ class PPO:
 # Training loop
 # ---------------------------------------------------------------------------
 
-def train(args):
+def train(args, env):
     # Build env using the custom AntEnv subclass from basic.py
-    from basic import AntEnv
+    # from basic import AntEnv
 
-    print(f"Creating environment from: {args.xml_path}")
-    env = AntEnv(args.xml_path)
+    # print(f"Creating environment from: {args.xml_path}")
+    # env = AntEnv(args.xml_path)
 
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
     print(f"obs_dim={obs_dim}  act_dim={act_dim}")
 
-    device = "cuda" if (args.cuda and torch.cuda.is_available()) else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
 
     agent = PPO(
-        obs_dim        = obs_dim,
-        act_dim        = act_dim,
-        lr             = args.lr,
-        gamma          = args.gamma,
-        lam            = args.lam,
-        clip_eps       = args.clip_eps,
-        n_steps        = args.n_steps,
-        n_minibatches  = args.n_minibatches,
-        n_epochs       = args.n_epochs,
-        vf_coef        = args.vf_coef,
-        ent_coef       = args.ent_coef,
-        device         = device,
+        obs_dim = obs_dim,
+        act_dim = act_dim,
+        lr = args.PPO_lr,
+        gamma = args.PPO_gamma,
+        lam = args.PPO_lam,
+        clip_eps = args.PPO_clip_eps,
+        n_steps = args.PPO_n_steps,
+        n_minibatches = args.PPO_n_minibatches,
+        n_epochs = args.PPO_n_epochs,
+        vf_coef = args.PPO_vf_coef,
+        ent_coef = args.PPO_ent_coef,
+        device = device,
     )
 
     obs, _ = env.reset()
     total_steps = 0
     update = 0
 
-    while total_steps < args.total_steps:
+    while total_steps < args.PPO_total_steps:
         obs, ep_rewards, ep_lengths = agent.collect_rollout(env, obs)
-        total_steps += args.n_steps
+        total_steps += args.PPO_n_steps
         update += 1
 
         stats = agent.update()
@@ -344,15 +355,15 @@ def train(args):
     # ------------------------------------------------------------------
     # Final evaluation — the fitness score for this robot morphology
     # ------------------------------------------------------------------
-    eval_return = agent.evaluate_policy(env, n_episodes=args.eval_episodes)
-    print(f"\n=== Evaluation over {args.eval_episodes} episodes ===")
+    eval_return = agent.evaluate_policy(env, n_episodes=args.PPO_eval_episodes)
+    print(f"\n=== Evaluation over {args.PPO_eval_episodes} episodes ===")
     print(f"Mean return: {eval_return:.2f}")
 
-    if args.save_path:
-        agent.save(args.save_path)
+    if args.PPO_save_path:
+        agent.save(args.PPO_save_path)
 
-    env.close()
-    return eval_return
+    # env.close()
+    return agent, eval_return
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +385,7 @@ if __name__ == "__main__":
     parser.add_argument("--vf_coef",       type=float, default=0.5)
     parser.add_argument("--ent_coef",      type=float, default=0.0)
     parser.add_argument("--eval_episodes", type=int,   default=5)
-    parser.add_argument("--save_path",     type=str,   default=None,
+    parser.add_argument("--PPO_save_path",     type=str,   default=None,
                         help="Path to save trained model weights")
     parser.add_argument("--cuda",          action="store_true")
 

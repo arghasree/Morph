@@ -442,7 +442,7 @@ class Robot:
             body.reindex()
             body.sync_node(body_start, body_end)
 
-    def add_child_to_body(self, parent_body, angle=None):
+    def add_child_to_body(self, parent_body, angle=None, tilt=None):
         """Clone an existing limb segment and attach it as a new child of parent_body.
 
         The root body (torso) is special — its first child is used as the clone template
@@ -452,7 +452,9 @@ class Robot:
 
         angle: optional rotation in radians around the Z-axis applied to bone_offset before
                rebuild(). Without it the new limb continues straight in the parent's direction;
-               with it the limb branches off at the given angle."""
+               with it the limb branches off at the given angle.
+        tilt:  optional rotation in radians around the X-axis applied after angle rotation.
+               Negative values tilt the limb downward (toward the ground)."""
         # Choose the template to clone.
         if parent_body is self.bodies[0]:
             body2clone = parent_body.child[0]
@@ -481,6 +483,13 @@ class Robot:
                           [np.sin(angle),  np.cos(angle), 0],
                           [0,              0,              1]])
             child_body.bone_offset = R @ child_body.bone_offset
+
+        # Optionally tilt the limb around the X-axis (negative = downward).
+        if tilt is not None:
+            Rx = np.array([[1, 0,            0           ],
+                           [0, np.cos(tilt), -np.sin(tilt)],
+                           [0, np.sin(tilt),  np.cos(tilt)]])
+            child_body.bone_offset = Rx @ child_body.bone_offset
 
         child_body.rebuild()
         child_body.sync_node()

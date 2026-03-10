@@ -65,7 +65,9 @@ class AntEnv(GymAntEnv):
         obs, reward, terminated, truncated, info = super().step(action)
         self.update_scene()  # Capture frame after each step
         return obs, reward, terminated, truncated, info
-        
+    
+    def reset_frames(self):
+        self.frames = []
 
 
 def run_ant_random_steps(args,
