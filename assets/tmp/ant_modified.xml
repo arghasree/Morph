@@ -27,29 +27,29 @@
         <geom fromto="0 0 0 0.2 0.2 0" size="0.08" type="capsule"/>
         <joint axis="0.707 0.707 0" name="1_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
         <body name="11" pos="0.2 0.2 0">
-          <geom fromto="0 0 0 -0.2 0.141421 -0.141421" size="0.08" type="capsule"/>
+          <geom fromto="0 0 0 0 0 -0.282843" size="0.08" type="capsule"/>
           <joint axis="0.707 0.707 0" name="11_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
         </body>
         <body name="21" pos="0.2 0.2 0">
-          <geom fromto="0 0 0 -0.2 0.141421 -0.141421" size="0.08" type="capsule"/>
+          <geom fromto="0 0 0 0.2 0.2 0" size="0.08" type="capsule"/>
           <joint axis="0.707 0.707 0" name="21_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
-          <body name="121" pos="0.2 0.2 0">
-            <geom fromto="0 0 0 -0.141421 -0.2 -0.141421" size="0.08" type="capsule"/>
-            <joint axis="0.707 0.707 0" name="121_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
-          </body>
-          <body name="221" pos="0.2 0.2 0">
-            <geom fromto="0 0 0 -0.141421 -0.241421 0.041421" size="0.08" type="capsule"/>
-            <joint axis="0.707 0.707 0" name="221_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
-          </body>
         </body>
+      </body>
+      <body name="2" pos="0 0 0">
+        <geom fromto="0 0 0 -0.2 -0.2 0" size="0.08" type="capsule"/>
+        <joint axis="0.707 0.707 0" name="2_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
+      </body>
+      <body name="3" pos="0 0 0">
+        <geom fromto="0 0 0 0 0 -0.282843" size="0.08" type="capsule"/>
+        <joint axis="0.707 0.707 0" name="3_joint" pos="0 0 0" limited="true" range="-100 100" type="hinge"/>
       </body>
     </body>
   </worldbody>
   <actuator>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="1_joint" gear="150" name="1_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="2_joint" gear="150" name="2_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="3_joint" gear="150" name="3_joint"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="11_joint" gear="150" name="11_joint"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="21_joint" gear="150" name="21_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="121_joint" gear="150" name="121_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="221_joint" gear="150" name="221_joint"/>
   </actuator>
 </mujoco>

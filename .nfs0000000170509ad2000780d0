@@ -1,0 +1,60 @@
+/scratch/arghasre/morpho-env
+/scratch/arghasre/morpho-env/bin/python3
+Wed Mar 11 14:19:19 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.211.01             Driver Version: 570.211.01     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L40S                    On  |   00000000:61:00.0 Off |                    0 |
+| N/A   29C    P8             32W /  350W |       0MiB /  46068MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+=== Initial bodies ===
+  body_0  parent=None  pos=[0.   0.   0.75]  bone_start=[0.   0.   0.75]  bone_end=[0.2 0.2 0. ]
+  body_1  parent=body_0  pos=[0.2 0.2 0. ]  bone_start=[0.2 0.2 0. ]  bone_end=[0.4 0.4 0. ]
+
+Initial GNN edges:
+[[1 0]
+ [0 1]]
+
+Adding child to: body_1
+
+=== Bodies after add_child_to_body ===
+  body_0  parent=None  pos=[0.   0.   0.75]
+  body_1  parent=body_0  pos=[0.2 0.2 0. ]
+  body_2  parent=body_0  pos=[0.2 0.2 0. ]
+  body_11  parent=body_1  pos=[0.4 0.4 0. ]
+  body_21  parent=body_1  pos=[0.4 0.4 0. ]
+  body_31  parent=body_1  pos=[0.4 0.4 0. ]
+
+New GNN edges:
+[[1 0 2 0 3 1 4 1 5 1]
+ [0 1 0 2 1 3 1 4 1 5]]
+
+Written to /home/arghasre/scratch/arghasre/assets/tmp/ant_modified.xml
+  body_0 geom start=[0. 0. 0.]  end=[0.2 0.2 0. ]  fromto_in_xml=0 0 0 0.2 0.2 0
+  body_1 geom start=[0. 0. 0.]  end=[0.2 0.2 0. ]  fromto_in_xml=0 0 0 0.2 0.2 0
+  body_2 geom start=[0. 0. 0.]  end=[-0.2 -0.2  0. ]  fromto_in_xml=0 0 0 -0.2 -0.2 0
+  body_11 geom start=[0. 0. 0.]  end=[-0.2 -0.2  0. ]  fromto_in_xml=0 0 0 -0.2 -0.2 0
+  body_21 geom start=[0. 0. 0.]  end=[ 2.77555756e-17  1.73191211e-17 -2.82842712e-01]  fromto_in_xml=0 0 0 0 0 -0.282843
+  body_31 geom start=[0. 0. 0.]  end=[0.2 0.2 0. ]  fromto_in_xml=0 0 0 0.2 0.2 0
+obs_dim=57  act_dim=5
+Using device: cuda
+[Update    1] steps=     100 ep_return=   -4.31  ep_len=   7.7  pg_loss=-0.0928  vf_loss=0.7175  entropy=7.0355
+
+=== Evaluation over 5 episodes ===
+Mean return: 4.53
+
+Saving video to: modified.mp4
+Video saved successfully! Total frames: 8

@@ -36,4 +36,5 @@ nvidia-smi
 
 # python3 main.py
 # sh scripts/Run_BodyGen.sh
-python3 controller.py
+python3 controller.py 
+# --PPO_n_steps 2048 --PPO_n_epochs 10 --PPO_total_steps 10000

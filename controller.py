@@ -16,15 +16,16 @@ def run(args, xml_path, trained_path, initial=False):
     #     agent = PPO(obs_dim=obs_dim, act_dim=act_dim)
     #     agent.load(args.PPO_save_path)
     # else:
-    agent,_ = train(args, env)
+    if not initial:
+        agent,_ = train(args, env)
     
-    # Save a video of the trained agent
-    obs, info = env.reset()
-    done = False
-    env.reset_frames()  # Clear any frames from the random steps
-    eval_return = agent.evaluate_policy(env, n_episodes=1)
-    env.save_video_from_frames(trained_path)
-    env.close_renderer()
+        # Save a video of the trained agent
+        obs, info = env.reset()
+        done = False
+        env.reset_frames()  # Clear any frames from the random steps
+        eval_return = agent.evaluate_policy(env, n_episodes=1)
+        env.save_video_from_frames(trained_path)
+        env.close_renderer()
     
     
 def change_body(args, initial_xml_path='assets/base_ant_flat.xml'):
@@ -41,17 +42,37 @@ def change_body(args, initial_xml_path='assets/base_ant_flat.xml'):
         print(f'  {b}  parent={b.parent}  pos={b.pos}  bone_start={b.bone_start}  bone_end={b.bone_end}')
 
     print(f'\nInitial GNN edges:\n{robot.get_gnn_edges()}\n')
+    
+    torso = robot.bodies[0]                                            
+    robot.add_child_to_body(torso, angle=np.pi)  # opposite side     
+    robot.add_child_to_body(torso, angle=np.pi/4, tilt=-np.pi/2) # leg downwards  
+
 
     # --- 2. Add a limb to body '1' (the single existing leg) ---
     leg = robot.bodies[1]          # body named '1'
     print(f'Adding child to: {leg}')
-    robot.add_child_to_body(leg, angle=np.pi/2, tilt=-np.pi/4)
-    robot.add_child_to_body(leg, angle=np.pi/2, tilt=-np.pi/4)
+    robot.add_child_to_body(leg, angle=np.pi/4, tilt=-np.pi/2) # leg downwards
+    # robot.add_child_to_body(leg, angle=np.pi/4, tilt=-np.pi/2) # leg downwards
+    robot.add_child_to_body(leg, angle=0, tilt=0)
+    # angle = -pi/2 -> adding leg down, rotates around z
+    # angle = 0 -> adding leg straight out to the side 
     
-    leg2 = robot.bodies[-1]        # the new leg we just added
-    print(f'Adding child to: {leg2}')
-    robot.add_child_to_body(leg2, angle=np.pi/2, tilt=0)
-    robot.add_child_to_body(leg2, angle=np.pi/2, tilt=-np.pi/4)
+
+    # robot.add_child_to_body(leg, angle=np.pi) # here the limb is added to the end of the torso and then rotated such that 
+    # #it is pointing backwards (towards the start of torso). 
+    
+    # robot.add_child_to_body(leg, angle=np.pi/4, tilt=-np.pi/2) # leg downwards
+    # # robot.add_child_to_body(leg, angle=np.pi/4, tilt=-np.pi/2) # leg downwards
+    # robot.add_child_to_body(leg, angle=0, tilt=0)
+    # # angle = -pi/2 -> adding leg down, rotates around z
+    # # angle = 0 -> adding leg straight out to the side 
+    
+    
+    
+    # leg2 = robot.bodies[-1]        # the new leg we just added
+    # print(f'Adding child to: {leg2}')
+    # robot.add_child_to_body(leg2, angle=0, tilt=np.pi/2) 
+    # # positive tilt -> adding leg upward above the xy plane 
 
     print('\n=== Bodies after add_child_to_body ===')
     for b in robot.bodies:

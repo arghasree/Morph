@@ -372,6 +372,7 @@ class Body:
             joint.sync_node(body_start)
         for geom in self.geoms:
             geom.sync_node(body_start=body_start, body_end=body_end)
+            
 
 
 class Robot:
@@ -474,8 +475,10 @@ class Robot:
             actu_section.append(new_actu_node)
             joint.actuator = Actuator(new_actu_node, joint)
 
-        # Inherit parent's bone_offset so the new limb has the same default proportions.
-        child_body.bone_offset = parent_body.bone_offset.copy()
+        # Inherit the template's bone_offset so the new limb has the same default proportions.
+        # Using body2clone (not parent_body) avoids the torso's broken bone_offset
+        # which mixes world-frame Z with parent-relative XY.
+        child_body.bone_offset = body2clone.bone_offset.copy()
 
         # Optionally rotate the limb direction around Z before rebuilding.
         if angle is not None:
@@ -492,6 +495,18 @@ class Robot:
             child_body.bone_offset = Rx @ child_body.bone_offset
 
         child_body.rebuild()
+
+        # Write correct parent-relative pos to the cloned XML node.
+        if parent_body is not self.bodies[0]:
+            # Non-root: all children attach at parent's tip,
+            # so XML pos = parent.bone_offset (vector from parent origin to tip).
+            child_node.attrib['pos'] = ' '.join(
+                [f'{x:.6f}'.rstrip('0').rstrip('.') for x in parent_body.bone_offset]
+            )
+        else:
+            # Root/torso: place child at torso origin so limbs radiate outward.
+            child_node.attrib['pos'] = '0 0 0'
+
         child_body.sync_node()
         parent_body.node.append(child_node)
         self.bodies.append(child_body)
